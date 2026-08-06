@@ -1,0 +1,5 @@
+# CI runs the script and formula on unix runners: keep them LF on every
+# checkout, including Windows clones with autocrlf on.
+* text=auto
+*.sh text eol=lf
+*.rb text eol=lf
