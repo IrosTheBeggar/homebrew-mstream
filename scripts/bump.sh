@@ -16,28 +16,42 @@ base="https://github.com/${repo}/releases/download/${tag}"
 
 manifest=$(mktemp)
 trap 'rm -f "${manifest}"' EXIT INT TERM
-if command -v curl >/dev/null 2>&1; then
-    curl -fsSL -o "${manifest}" "${base}/manifest.json"
+if command -v curl >/dev/null 2>&1
+then
+  curl -fsSL -o "${manifest}" "${base}/manifest.json"
 else
-    wget -qO "${manifest}" "${base}/manifest.json"
+  wget -qO "${manifest}" "${base}/manifest.json"
 fi
 
 sha() {
-    grep -o "\"file\": \"mstream-player-${1}\", \"sha256\": \"[0-9a-f]*\"" "${manifest}" \
-        | grep -o '[0-9a-f]\{64\}'
+  sed -n "s/.*\"file\": \"mstream-player-${1}\", \"sha256\": \"\([0-9a-f]\{64\}\)\".*/\1/p" "${manifest}"
 }
 
-darwin_arm=$(set -e; sha darwin-arm64)
-darwin_x64=$(set -e; sha darwin-x64)
-linux_x64=$(set -e; sha linux-x64)
-linux_arm=$(set -e; sha linux-arm64)
-for hash in "${darwin_arm}" "${darwin_x64}" "${linux_x64}" "${linux_arm}"; do
-    case "${hash}" in
-        "" | *[!0-9a-f]*)
-            echo "manifest.json is missing a hash — refusing to write the formula" >&2
-            exit 1
-            ;;
-    esac
+darwin_arm=$(
+  set -e
+  sha darwin-arm64
+)
+darwin_x64=$(
+  set -e
+  sha darwin-x64
+)
+linux_x64=$(
+  set -e
+  sha linux-x64
+)
+linux_arm=$(
+  set -e
+  sha linux-arm64
+)
+for hash in "${darwin_arm}" "${darwin_x64}" "${linux_x64}" "${linux_arm}"
+do
+  case "${hash}" in
+    "" | *[!0-9a-f]*)
+      echo "manifest.json is missing a hash — refusing to write the formula" >&2
+      exit 1
+      ;;
+    *) ;;
+  esac
 done
 
 scriptdir=$(dirname "${0}")
