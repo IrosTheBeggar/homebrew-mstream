@@ -20,15 +20,11 @@ jobs:
         os: [macos-latest, macos-13, ubuntu-latest]
 
     steps:
-      - uses: actions/checkout@v6
-
-      - name: Register this checkout as the tap
-        # brew refuses formulas outside a tap, so the checkout is linked in
-        # under the name users will actually type.
-        run: |
-          tapdir="$(brew --repository)/Library/Taps/irosthebeggar/homebrew-mstream"
-          mkdir -p "$(dirname "$tapdir")"
-          ln -s "$GITHUB_WORKSPACE" "$tapdir"
+      # Installs brew where the runner image lacks it (today's ubuntu) and
+      # checks this repository out as the tap it names — brew refuses
+      # formulas outside a tap.
+      - name: Set up Homebrew
+        uses: Homebrew/actions/setup-homebrew@main
 
       - name: ALSA for the test block (Linux)
         if: runner.os == 'Linux'
