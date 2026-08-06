@@ -1,0 +1,50 @@
+# Proves the formula on the three platforms brew serves: both Mac
+# architectures on GitHub's real Mac runners — which is also where the
+# darwin binaries get their first run on genuine hardware — and
+# Homebrew-on-Linux beside them.
+name: brew
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, macos-13, ubuntu-latest]
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Register this checkout as the tap
+        # brew refuses formulas outside a tap, so the checkout is linked in
+        # under the name users will actually type.
+        run: |
+          tapdir="$(brew --repository)/Library/Taps/irosthebeggar/homebrew-mstream"
+          mkdir -p "$(dirname "$tapdir")"
+          ln -s "$GITHUB_WORKSPACE" "$tapdir"
+
+      - name: ALSA for the test block (Linux)
+        if: runner.os == 'Linux'
+        # noble renamed the package in the time_t transition; take either.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2t64 || sudo apt-get install -y libasound2
+
+      - name: Style
+        run: brew style irosthebeggar/mstream
+
+      - name: Install
+        run: brew install irosthebeggar/mstream/mstream-player
+
+      - name: Runs on this hardware
+        run: mstream-player --version
+
+      - name: Test block
+        run: brew test irosthebeggar/mstream/mstream-player
