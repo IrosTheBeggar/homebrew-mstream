@@ -1,7 +1,8 @@
-# Proves the formula on the three platforms brew serves: both Mac
-# architectures on GitHub's real Mac runners — which is also where the
-# darwin binaries get their first run on genuine hardware — and
-# Homebrew-on-Linux beside them.
+# Proves the formula everywhere brew serves it: Apple Silicon on a real
+# Mac runner, Homebrew-on-Linux beside it — and the Intel build executed
+# under Rosetta 2 on the same Mac, because GitHub's Intel runner pool is
+# retired in all but name and a job that queues for ten hours proves
+# nothing.
 name: brew
 
 on:
@@ -17,7 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, macos-13, ubuntu-latest]
+        os: [macos-latest, ubuntu-latest]
 
     steps:
       # Installs brew where the runner image lacks it (today's ubuntu) and
@@ -44,3 +45,17 @@ jobs:
 
       - name: Test block
         run: brew test irosthebeggar/mstream/mstream-player
+
+      - name: Intel build runs under Rosetta
+        if: runner.os == 'macOS'
+        run: |
+          sudo softwareupdate --install-rosetta --agree-to-license || true
+          version=$(mstream-player --version | awk '{print $2}')
+          base="https://github.com/IrosTheBeggar/mstream-terminal-player/releases/download/v${version}"
+          curl -fsSL -o /tmp/mp-x64 "${base}/mstream-player-darwin-x64"
+          curl -fsSL -o /tmp/manifest.json "${base}/manifest.json"
+          expected=$(sed -n 's/.*"file": "mstream-player-darwin-x64", "sha256": "\([0-9a-f]*\)".*/\1/p' /tmp/manifest.json)
+          actual=$(shasum -a 256 /tmp/mp-x64 | cut -d' ' -f1)
+          [ "${expected}" = "${actual}" ] || { echo "hash mismatch" >&2; exit 1; }
+          chmod +x /tmp/mp-x64
+          arch -x86_64 /tmp/mp-x64 --version
